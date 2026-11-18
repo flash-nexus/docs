@@ -3,7 +3,7 @@ description: 凭据、预览设置、输出与生命周期回调所使用的环�
 ---
 # 环境变量
 
-对于支持的字段，环境变量覆盖配置文件，命令行参数又会覆盖环境变量。
+对于 flash-tunnel 支持的字段，环境变量覆盖配置文件，命令行参数又会覆盖环境变量。flash-nexus 会在创建 DNS 和 Tunnel 适配器前加载同一个 `.env` 文件。
 
 ## 凭据与账号
 
@@ -11,7 +11,7 @@ description: 凭据、预览设置、输出与生命周期回调所使用的环�
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | 唯一 API 凭据来源，named 模式必需 |
 | `CLOUDFLARE_ACCOUNT_ID` | 显式指定 Cloudflare 账号 |
-| `CLOUDFLARE_ZONE_ID` | 显式指定 Cloudflare Zone |
+| `CLOUDFLARE_ZONE_ID` | DNS 适配器使用的可选 Zone 提示 |
 
 Token 不写入配置、状态或命令参数。无人值守运行时请使用 CI 密钥存储，权限配置见[自定义域名](../guide/custom-domains)。
 
@@ -19,15 +19,14 @@ Token 不写入配置、状态或命令参数。无人值守运行时请使用 C
 
 | 变量 | 映射 / 含义 |
 | --- | --- |
-| `FLASH_TUNNEL_ZONE` | `domain.zone` |
-| `FLASH_TUNNEL_HOSTNAME` | 完整公网主机名，优先于 zone/subdomain 拼接 |
+| `FLASH_TUNNEL_HOSTNAME` | 独立 named 模式使用的完整公网主机名 |
 | `FLASH_TUNNEL_MODE` | `tunnel.mode`：`named` 或 `quick` |
 | `FLASH_TUNNEL_PORT` | `server.port` |
 | `FLASH_TUNNEL_COMMAND` | `server.command` |
 | `FLASH_TUNNEL_CLOUDFLARED` | `providers.cloudflare.cloudflaredPath` |
 | `FLASH_TUNNEL_AUTO_STOP` | `autoStopAfter`，例如 `30m` |
 | `FLASH_TUNNEL_TUNNEL_PROVIDER` | `tunnel.provider` |
-| `FLASH_TUNNEL_DNS_PROVIDER` | `domain.provider` |
+| `FLASH_TUNNEL_DNS_PROVIDER` | 独立模式的历史 provider 选择；DNS 编排由 flash-nexus 负责 |
 
 ## 输出与状态
 

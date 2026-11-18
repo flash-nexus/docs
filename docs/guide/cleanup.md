@@ -1,22 +1,31 @@
 ---
-description: Understand normal cleanup, interrupted sessions, retention, and manual recovery commands.
+description: Understand standalone Tunnel cleanup and how flash-nexus coordinates DNS cleanup.
 ---
 # Cleanup and recovery
 
-A preview is tied to its terminal session. On a normal exit, flash-tunnel removes the resources it created so temporary previews do not become abandoned infrastructure.
+`flash-tunnel` owns the Tunnel and the local processes it starts. It does not own DNS records. When DNS and Tunnel are managed together, `flash-nexus` adds the `flash-dns` record to the same session lifecycle.
 
-## Normal shutdown
+## Standalone flash-tunnel
 
-Press **Ctrl+C** once, or **q** in an interactive terminal. Cleanup runs in this order:
+On normal exit, standalone `flash-tunnel`:
 
-1. Stop `cloudflared`.
-2. Allow connections to drain.
-3. Delete the session's DNS record.
-4. Delete the tunnel.
-5. Stop the local server process started by flash-tunnel.
-6. Remove session state and release the project lock.
+1. Stops `cloudflared`.
+2. Waits for the Tunnel session to finish its cleanup hooks.
+3. Stops the local server process started by flash-tunnel.
+4. Removes local session state and releases the project lock.
 
-Quick mode has no account-owned DNS record to delete. A server attached through `--url` is not stopped.
+Quick mode has no account-owned DNS record. A server attached through `--url` remains yours to stop.
+
+## flash-nexus cleanup
+
+When a named session is started by `flash-nexus`, cleanup runs across both providers:
+
+1. Stop the client or local server processes owned by the session.
+2. Remove the session-owned DNS record through `flash-dns`.
+3. Stop and deprovision the named Tunnel through `flash-tunnel`.
+4. Remove session state.
+
+The session owner is recorded in the DNS record metadata, so cleanup can refuse to remove a record owned by another workflow.
 
 ## Interrupted sessions
 
@@ -26,45 +35,22 @@ Quick mode has no account-owned DNS record to delete. A server attached through 
 | `SIGTERM` / `SIGHUP` | Clean up, then exit with `143` |
 | Second `Ctrl+C` during shutdown | Exit immediately; retain state for recovery |
 | Main process killed or terminal closed | A detached watchdog attempts recovery |
-| Next startup | Sweep stale sessions, unless `--no-sweep` is set |
-| Cleanup failure | Exit with `8` and retain state so cleanup can be retried |
+| Cleanup failure | Retain state so cleanup can be retried |
 
-The watchdog is a best-effort fallback. Cloud cleanup still needs network access and valid credentials. Check stale sessions after a shutdown that could not finish.
+Cloud cleanup needs network access and valid credentials. Check the recorded session after an interrupted run.
 
 ## Manual cleanup
 
 ```sh
-# List leftover sessions
 npx flash-tunnel clean
-
-# Preview cleanup without changing resources
 npx flash-tunnel clean --stale --dry-run
-
-# Clean stale sessions, optionally scoped to a project
 npx flash-tunnel clean --stale
-npx flash-tunnel clean --project ./apps/web --stale
-
-# Clean a specific session using its printed identifier
-npx flash-tunnel clean --session ft_xxxx
 ```
 
-`clean --all --yes` removes all recorded sessions. `--force` allows cleanup of a running session. Use a specific session or project when you only intend to stop one preview.
+For DNS records managed by `flash-dns`, inspect the plan or record ownership before removing anything. Avoid deleting local state until you understand which cloud resources remain.
 
 ## Keeping cloud resources
 
-```sh
-npx flash-tunnel --zone example.com --keep
-```
+Standalone Tunnel sessions and Nexus sessions can be configured to keep their cloud resources. A retained Tunnel or DNS record does not keep your local server or `cloudflared` process running.
 
-`--keep` retains the DNS record and tunnel when the process exits, and prints a cleanup command. **It does not keep your local server or `cloudflared` running.** A retained DNS record alone does not make the preview stay online.
-
-## State and logs
-
-Runtime data lives outside your checkout:
-
-- Project data and logs: `~/.flash-tunnel/projects/<project-key>/`.
-- Session index: `~/.flash-tunnel/sessions/`.
-
-Inactive project data is pruned after **7 days** by default. `FLASH_TUNNEL_RETENTION_DAYS=0` disables pruning. State files are used to recover cloud resources; avoid deleting them before resolving incomplete cleanup.
-
-The token is read from the environment and is not stored in config, state, or command arguments. DNS records and tunnels are deleted by recorded ID with ownership checks.
+Cloudflare credentials are read from the environment and are not stored in project configuration, session state, or command arguments.

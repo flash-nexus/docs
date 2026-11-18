@@ -5,7 +5,7 @@ description: 参与 flash-tunnel 开发或维护中英文 VitePress 文档。
 
 项目分为两个仓库：
 
-- [flash-tunnel/flash-tunnel](https://github.com/flash-tunnel/flash-tunnel)：CLI、核心逻辑、配置与 Cloudflare 适配器。
+- [flash-nexus/flash-tunnel](https://github.com/flash-nexus/flash-tunnel)：CLI、核心逻辑、配置与 Cloudflare 适配器。
 - [flash-tunnel/docs](https://github.com/flash-tunnel/docs)：独立的 VitePress 文档站。
 
 ## 开发 CLI
@@ -13,7 +13,7 @@ description: 参与 flash-tunnel 开发或维护中英文 VitePress 文档。
 使用 Node.js **22.14+**，以及仓库 `packageManager` 字段指定的 pnpm 版本。
 
 ```sh
-git clone git@github.com:flash-tunnel/flash-tunnel.git
+git clone git@github.com:flash-nexus/flash-tunnel.git
 cd flash-tunnel
 pnpm install
 pnpm build

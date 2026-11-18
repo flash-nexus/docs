@@ -14,16 +14,16 @@ hero:
       link: /guide/quick-start
     - theme: alt
       text: View on GitHub ↗
-      link: https://github.com/flash-tunnel/flash-tunnel
+      link: https://github.com/flash-nexus/flash-tunnel
 features:
   - title: Your project, detected
     details: Finds your framework, package manager, scripts, and port. Works with Vite, Next, Nuxt, Astro, static sites, and more.
     link: /guide/local-servers
     linkText: Explore local servers
   - title: A link that fits
-    details: Get a temporary URL without a token, or use your own domain with Cloudflare Tunnel and automatic DNS setup.
-    link: /guide/custom-domains
-    linkText: Choose a tunnel mode
+    details: Get a temporary URL with flash-tunnel, or let flash-nexus coordinate DNS records and the Tunnel for a named preview.
+    link: /guide/ecosystem
+    linkText: Understand the ecosystem
   - title: Share it. Then leave.
     details: Exit to remove DNS records, tunnels, and child processes. A watchdog and startup sweep help recover interrupted sessions.
     link: /guide/cleanup

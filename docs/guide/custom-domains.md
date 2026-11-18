@@ -1,74 +1,81 @@
 ---
-description: Set up a Cloudflare API token and share a preview on your own domain.
+description: Use an existing hostname with standalone flash-tunnel or let flash-nexus manage DNS.
 ---
 # Custom domains
 
-Named mode creates a Cloudflare Tunnel and a DNS record for a hostname on your domain. It removes both on normal exit unless you pass `--keep`.
+There are two ways to use your own domain:
 
-## Prepare a domain and token
+- **Standalone flash-tunnel:** prepare the DNS record separately, then pass the existing hostname.
+- **flash-nexus:** configure the zone and hostname rules once; Nexus uses `flash-dns` and `flash-tunnel` together and cleans up the resources it owns.
 
-Your domain must be an active zone in your Cloudflare account. Create a **Custom token** in the [Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens) with these permissions, scoped to the account and zone you use:
+## Standalone flash-tunnel
+
+The standalone Tunnel command does not create or delete DNS records. Prepare a hostname with `flash-dns` or another DNS workflow, then start the Tunnel:
+
+```sh
+npx flash-tunnel --mode named --hostname preview.example.com --url http://127.0.0.1:4317
+```
+
+Set the credentials in the environment:
+
+```sh
+export CLOUDFLARE_API_TOKEN='your_token_here'
+export CLOUDFLARE_ACCOUNT_ID='your_account_id'
+```
+
+The token is read from the environment. Keep it out of project configuration and Git history.
+
+## Managed DNS with flash-nexus
+
+Use `flash-nexus.config.ts` when the same session should create the DNS record and Tunnel:
+
+```ts
+import { defineConfig } from 'flash-nexus'
+
+export default defineConfig({
+  tunnel: {
+    mode: 'named',
+    hostname: 'preview.example.com'
+  },
+  dns: {
+    zone: 'example.com'
+  }
+})
+```
+
+Then run:
+
+```sh
+npx flash-nexus
+```
+
+Nexus loads `.env`, creates the Tunnel through `flash-tunnel`, creates the DNS record through `flash-dns`, and removes both resources during cleanup.
+
+## DNS permissions
+
+For the managed flow, create a Cloudflare Custom token with the permissions required by both providers:
 
 | Permission | Used for |
 | --- | --- |
-| Account · Cloudflare Tunnel · Edit | Create/delete tunnels, configure ingress, clean connections |
-| Zone · DNS · Edit | Create/delete CNAME records and check conflicts |
-| Zone · Zone · Read | Discover the zone |
-| Account · Account Settings · Read | Discover the account |
+| Account · Cloudflare Tunnel · Edit | Create and delete named Tunnels and configure ingress |
+| Zone · DNS · Edit | Create and delete the session-owned CNAME record |
+| Zone · Zone · Read | Resolve and validate the DNS zone |
 
-The dashboard may use **Write** instead of **Edit**. See the project's [README](https://github.com/flash-tunnel/flash-tunnel#cloudflare-token-permissions) for the permission list maintained with the code.
-
-## Set your token
-
-::: code-group
-```sh [macOS / Linux]
-export CLOUDFLARE_API_TOKEN='your_token_here'
-```
-```powershell [PowerShell]
-$env:CLOUDFLARE_API_TOKEN = 'your_token_here'
-```
-:::
-
-The token is read **only from the environment**. Keep it out of your config file and Git history.
-
-## Start a preview
-
-```sh
-npx flash-tunnel --zone example.com
-```
-
-By default, the subdomain uses `{project}-{rand}`. For example, a project named `my-app` could get `my-app-a1b2.example.com`. The random suffix helps avoid collisions and stale DNS caches.
-
-Choose a fixed label or full hostname:
-
-```sh
-npx flash-tunnel --zone example.com --subdomain demo
-npx flash-tunnel --hostname demo.example.com
-```
-
-If account discovery is ambiguous, set `CLOUDFLARE_ACCOUNT_ID`. You can also set `CLOUDFLARE_ZONE_ID` explicitly. See [environment variables](../reference/environment).
+The exact permissions depend on the provider workflow you choose. Keep the token scoped to the account and zones used by the project.
 
 ## Subdomain templates
 
-| Placeholder | Value |
-| --- | --- |
-| `{project}` | Slug derived from the project directory |
-| `{branch}` | Git branch, normalized for DNS |
-| `{rand}` | Random suffix |
-| `{rand:6}` | Random suffix with the requested length |
-| `{session}` | Session identifier |
-| `{ts}` | Timestamp |
+For a standalone Tunnel, pass the complete hostname with `--hostname`. For a managed Nexus workflow, put the zone and naming rules in `flash-nexus.config.ts`; `flash-dns` renders and validates the hostname before the Tunnel starts.
 
-```sh
-npx flash-tunnel --zone example.com --subdomain '{project}-{branch}-{rand:6}'
+```ts
+export default defineConfig({
+  dns: {
+    zone: 'example.com',
+    naming: { template: 'fd-{project}.example.com' }
+  }
+})
 ```
 
-::: warning Multi-level names
-A hostname such as `demo.team.example.com` needs `--allow-multilevel` and suitable Cloudflare certificate coverage, such as Advanced Certificate. Prefer a single label unless you have configured that coverage.
-:::
+## Naming and conflicts
 
-## DNS conflicts
-
-flash-tunnel checks ownership before replacing records. If you get `RECORD_CONFLICT`, choose another subdomain or inspect the existing record first. `--overwrite` replaces records created outside flash-tunnel; use it only when you intend to replace that record.
-
-For repeatable settings, save the domain in [`flash-tunnel.ts`](./configuration). For resource retention and manual cleanup, see [cleanup and recovery](./cleanup).
+Put `zone`, `hostname`, or naming rules in `flash-nexus.config.ts`. Keep Cloudflare credentials in `.env` or the environment. `flash-dns` records ownership metadata so a session can detect conflicts and remove only records it owns.

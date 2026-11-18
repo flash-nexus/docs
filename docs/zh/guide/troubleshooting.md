@@ -77,4 +77,4 @@ npx flash-tunnel clean --stale
 
 清理未完成时，可能用 `8` 覆盖之前的退出状态，以提示需要恢复。
 
-仍有问题？欢迎[提交 Issue](https://github.com/flash-tunnel/flash-tunnel/issues)。
+仍有问题？欢迎[提交 Issue](https://github.com/flash-nexus/flash-tunnel/issues)。

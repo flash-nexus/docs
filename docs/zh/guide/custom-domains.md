@@ -1,74 +1,81 @@
 ---
-description: 配置 Cloudflare API Token，通过自己的域名分享本地预览。
+description: 独立使用 flash-tunnel 接入已有域名，或使用 flash-nexus 自动管理 DNS。
 ---
 # 自定义域名
 
-Named 模式会创建 Cloudflare Tunnel 和域名下的 DNS 记录。正常退出时删除这两项资源，除非传入 `--keep`。
+接入自己的域名有两种方式：
 
-## 准备域名与 Token
+- **独立使用 flash-tunnel：** 先由其他 DNS 工作流准备记录，再传入已有域名。
+- **使用 flash-nexus：** 一次配置 Zone 和命名规则，由 Nexus 组合 `flash-dns` 与 `flash-tunnel`，并清理本次会话创建的资源。
 
-域名必须已在 Cloudflare 账号中成为 active 状态的 Zone。在 [Cloudflare 控制台](https://dash.cloudflare.com/profile/api-tokens)创建 **Custom token**，限定到使用的账号和 Zone，并授予以下权限：
+## 独立使用 flash-tunnel
+
+独立 Tunnel 命令不会创建或删除 DNS 记录。可以先用 `flash-dns` 或其他 DNS 工作流准备域名，再启动 Tunnel：
+
+```sh
+npx flash-tunnel --mode named --hostname preview.example.com --url http://127.0.0.1:4317
+```
+
+将凭据放入环境变量：
+
+```sh
+export CLOUDFLARE_API_TOKEN='your_token_here'
+export CLOUDFLARE_ACCOUNT_ID='your_account_id'
+```
+
+Token 只从环境变量读取。不要将它写入项目配置或 Git 历史。
+
+## 使用 flash-nexus 管理 DNS
+
+如果同一次会话需要同时创建 DNS 记录和 Tunnel，使用 `flash-nexus.config.ts`：
+
+```ts
+import { defineConfig } from 'flash-nexus'
+
+export default defineConfig({
+  tunnel: {
+    mode: 'named',
+    hostname: 'preview.example.com'
+  },
+  dns: {
+    zone: 'example.com'
+  }
+})
+```
+
+然后执行：
+
+```sh
+npx flash-nexus
+```
+
+Nexus 会加载 `.env`，通过 `flash-tunnel` 创建 Tunnel，通过 `flash-dns` 创建 DNS 记录，并在清理时删除本次会话创建的资源。
+
+## DNS 权限
+
+集成工作流需要一个同时满足两个 provider 要求的 Cloudflare Custom token：
 
 | 权限 | 用途 |
 | --- | --- |
-| Account · Cloudflare Tunnel · Edit | 创建 / 删除隧道、配置 ingress、清理连接 |
-| Zone · DNS · Edit | 创建 / 删除 CNAME 记录、检查冲突 |
-| Zone · Zone · Read | 查询 Zone |
-| Account · Account Settings · Read | 查询账号 |
+| Account · Cloudflare Tunnel · Edit | 创建和删除 named Tunnel，配置 ingress |
+| Zone · DNS · Edit | 创建和删除会话归属的 CNAME 记录 |
+| Zone · Zone · Read | 查询和校验 DNS Zone |
 
-控制台可能将 **Edit** 显示为 **Write**。也可以查看与代码一同维护的[项目 README](https://github.com/flash-tunnel/flash-tunnel/blob/main/README_CN.md)。
-
-## 设置 Token
-
-::: code-group
-```sh [macOS / Linux]
-export CLOUDFLARE_API_TOKEN='your_token_here'
-```
-```powershell [PowerShell]
-$env:CLOUDFLARE_API_TOKEN = 'your_token_here'
-```
-:::
-
-Token **仅从环境变量读取**。不要写入配置文件或 Git 历史。
-
-## 启动预览
-
-```sh
-npx flash-tunnel --zone example.com
-```
-
-默认子域名模板为 `{project}-{rand}`。例如，`my-app` 项目可能分配到 `my-app-a1b2.example.com`。随机后缀可以减少命名冲突和旧 DNS 缓存带来的影响。
-
-也可以指定固定名称或完整主机名：
-
-```sh
-npx flash-tunnel --zone example.com --subdomain demo
-npx flash-tunnel --hostname demo.example.com
-```
-
-无法自动确定账号时，设置 `CLOUDFLARE_ACCOUNT_ID`。也可以用 `CLOUDFLARE_ZONE_ID` 显式指定 Zone，详见[环境变量](../reference/environment)。
+具体权限取决于选择的 provider 工作流。请将 Token 限定在项目使用的账号和 Zone 范围内。
 
 ## 子域名模板
 
-| 占位符 | 含义 |
-| --- | --- |
-| `{project}` | 由项目目录名生成的 slug |
-| `{branch}` | 适用于 DNS 的 Git 分支名 |
-| `{rand}` | 随机后缀 |
-| `{rand:6}` | 指定长度的随机后缀 |
-| `{session}` | 会话标识 |
-| `{ts}` | 时间戳 |
+独立使用 Tunnel 时，直接通过 `--hostname` 传入完整域名。使用 Nexus 管理的工作流时，将 Zone 和命名规则写入 `flash-nexus.config.ts`，由 `flash-dns` 在 Tunnel 启动前生成并校验主机名。
 
-```sh
-npx flash-tunnel --zone example.com --subdomain '{project}-{branch}-{rand:6}'
+```ts
+export default defineConfig({
+  dns: {
+    zone: 'example.com',
+    naming: { template: 'fd-{project}.example.com' }
+  }
+})
 ```
 
-::: warning 多级子域名
-`demo.team.example.com` 这样的地址需要 `--allow-multilevel`，并需要 Cloudflare 证书覆盖，例如 Advanced Certificate。没有配置相应证书时，建议使用单级子域名。
-:::
+## 命名和冲突
 
-## DNS 冲突
-
-flash-tunnel 会检查记录归属。遇到 `RECORD_CONFLICT` 时，可以换一个子域名，或先检查已有记录。`--overwrite` 会替换其他工具创建的记录，请仅在确实需要替换时使用。
-
-需要固定配置时，将域名写入 [`flash-tunnel.ts`](./configuration)。保留资源和手动回收方式见[清理与恢复](./cleanup)。
+将 `zone`、`hostname` 或命名规则写入 `flash-nexus.config.ts`。Cloudflare 凭据放入 `.env` 或环境变量。`flash-dns` 会记录归属信息，帮助会话检测冲突，并只删除自己拥有的记录。

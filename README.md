@@ -1,6 +1,6 @@
 # flash-tunnel-docs
 
-The independent English / 简体中文 documentation for [flash-tunnel](https://github.com/flash-tunnel/flash-tunnel).
+The independent English / 简体中文 documentation for [flash-tunnel](https://github.com/flash-nexus/flash-tunnel).
 
 - Website: **https://flash-tunnel.imba97.dev**
 - Repository: **git@github.com:flash-tunnel/docs.git**
@@ -74,7 +74,7 @@ GitHub's instructions: [publishing source](https://docs.github.com/en/pages/gett
 
 Navigation structure, theme-token conventions, and reading rhythm were adapted from imba97's MIT-licensed pmpx and Synra documentation projects. The homepage components and flash-tunnel content are tailored to this project. See [LICENSE](LICENSE).
 
-When updating content, verify behavior against `flash-tunnel/flash-tunnel`, especially `packages/config/src/types.ts`, `packages/core/src/config/resolve.ts`, and `packages/cli/src/index.ts`. Keep both languages in sync.
+When updating content, verify behavior against `flash-nexus/flash-tunnel`, especially `packages/config/src/types.ts`, `packages/core/src/config/resolve.ts`, and `packages/cli/src/index.ts`. Keep both languages in sync.
 
 ## 中文说明
 

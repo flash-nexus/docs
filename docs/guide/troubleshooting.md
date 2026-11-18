@@ -77,4 +77,4 @@ For one retained session, use `clean --session <id>`. Keep the state files until
 
 An incomplete cleanup can replace an earlier exit status with `8` so recovery is not missed.
 
-Still stuck? [Open an issue](https://github.com/flash-tunnel/flash-tunnel/issues).
+Still stuck? [Open an issue](https://github.com/flash-nexus/flash-tunnel/issues).

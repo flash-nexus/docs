@@ -5,7 +5,7 @@ description: Contribute to flash-tunnel or its bilingual VitePress documentation
 
 There are two repositories:
 
-- [flash-tunnel/flash-tunnel](https://github.com/flash-tunnel/flash-tunnel): the CLI, core, config, and Cloudflare adapter.
+- [flash-nexus/flash-tunnel](https://github.com/flash-nexus/flash-tunnel): the CLI, core, config, and Cloudflare adapter.
 - [flash-tunnel/docs](https://github.com/flash-tunnel/docs): this independent VitePress site.
 
 ## Work on the CLI
@@ -13,7 +13,7 @@ There are two repositories:
 Use Node.js **22.14+** and the pnpm version declared in the repository's `packageManager` field.
 
 ```sh
-git clone git@github.com:flash-tunnel/flash-tunnel.git
+git clone git@github.com:flash-nexus/flash-tunnel.git
 cd flash-tunnel
 pnpm install
 pnpm build

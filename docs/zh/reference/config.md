@@ -1,77 +1,64 @@
 ---
-description: 对照配置类型和解析实现整理的 flash-tunnel.ts 字段、默认值与单位。
+description: flash-tunnel.ts 支持的字段，以及 Tunnel 与 DNS 配置的职责边界。
 ---
 # 配置项参考
 
-从 `flash-tunnel` 导入 `defineConfig` 可以获得编辑器补全。文件查找、路径与优先级见[配置项目](../guide/configuration)。
-
-## 域名
-
-| 字段 | 类型 | 默认值 / 行为 |
-| --- | --- | --- |
-| `domain.provider` | `string` | `'cloudflare'` |
-| `domain.zone` | `string` | 能推断时自动选择，否则需要提供 |
-| `domain.subdomain` | `string` | `'{project}-{rand}'` |
-
-完整主机名通过 `--hostname` 或 `FLASH_TUNNEL_HOSTNAME` 提供。`domain.hostname` 不属于配置接口。子域名占位符见[自定义域名](../guide/custom-domains#子域名模板)。
+从 `flash-tunnel` 导入 `defineConfig` 可以获得编辑器补全。独立使用时，`flash-tunnel.ts` 只描述本地服务和 Tunnel 设置；需要 DNS 编排时，使用 `flash-nexus.config.ts`。
 
 ## 本地服务
 
 | 字段 | 类型 | 默认值 / 行为 |
 | --- | --- | --- |
 | `server.command` | `string` | 自动识别启动脚本 |
-| `server.cwd` | `string` | 已加载配置时为配置目录，否则为项目目录 |
-| `server.port` | `number` | 从脚本 / 框架 / 服务模式中探测 |
+| `server.cwd` | `string` | 已加载配置时为配置目录 |
+| `server.port` | `number` | 从脚本、框架或服务模式中探测 |
 | `server.url` | `string` | 要连接的已有服务地址 |
 | `server.dir` | `string` | 要托管的静态目录 |
-| `server.timeout` | `number` | `60000` 毫秒，正整数 |
+| `server.timeout` | `number` | `60000` 毫秒 |
 
-`command`、`url`、`dir` 对应不同服务模式，请选择其中一种。相对路径以配置目录为基准。`--attach` 需要 URL，且不能与 command 并用。
+`command`、`url`、`dir` 三者选择其一。相对路径以配置目录为基准。
 
-设置 `server.port` 后，端口属于显式设置，会在启动命令前检查冲突，但不会改变命令自身的参数。从 0.2.0 开始，没有配置端口且默认端口被占用时，可以从服务输出中读取实际 URL，详见[本地服务](../guide/local-servers#端口选择与冲突)。
-
-## 隧道
-
-| 字段 | 类型 | 默认值 |
-| --- | --- | --- |
-| `tunnel.provider` | `string` | `'cloudflare'` |
-| `tunnel.mode` | `'named' \| 'quick'` | `'named'` |
-| `tunnel.name` | `string` | `'flash-tunnel-{project}-{rand}'` |
-
-Quick 模式分配随机 `trycloudflare.com` 地址，并忽略生成的 named 主机名。内置适配器支持情况可通过 `flash-tunnel providers` 查看；仅填写 provider 字符串不会安装新适配器。
-
-## Cloudflare 配置
+## Tunnel
 
 | 字段 | 类型 | 默认值 / 行为 |
 | --- | --- | --- |
-| `providers.cloudflare.accountId` | `string` | 无歧义时通过 Token 自动发现 |
-| `providers.cloudflare.zoneId` | `string` | 通过 Zone 名称解析 |
+| `tunnel.provider` | `string` | `'cloudflare'` |
+| `tunnel.mode` | `'quick' \| 'named'` | 独立 flash-tunnel 默认为 `'quick'` |
+| `tunnel.name` | `string` | 根据项目目录生成 |
+| `tunnel.hostname` | `string` | named 模式下已经存在的域名 |
+
+Quick 模式返回随机的 `trycloudflare.com` 地址。Named 模式要求 DNS 已经将域名指向对应 Tunnel。
+
+## Cloudflare 选项
+
+非敏感的 Tunnel 选项保留在 provider 配置中：
+
+| 字段 | 类型 | 默认值 / 行为 |
+| --- | --- | --- |
 | `providers.cloudflare.cloudflaredPath` | `string` | `'cloudflared'` |
 | `providers.cloudflare.originRequest.httpHostHeader` | `string` | 可选，覆盖源站 Host 请求头 |
 | `providers.cloudflare.originRequest.noTLSVerify` | `boolean` | 可选，覆盖源站 TLS 验证行为 |
 
-`noTLSVerify: true` 会关闭源站证书验证。仅在明确需要连接这类本地 HTTPS 服务时使用。
+Cloudflare 凭据不属于配置字段，适配器从环境变量读取：
 
-配置中没有 API Token 字段。凭据仅来自 `CLOUDFLARE_API_TOKEN`。
+```env
+CLOUDFLARE_API_TOKEN=...
+CLOUDFLARE_ACCOUNT_ID=...
+```
 
-## 自动停止
+当 DNS 工作流需要跳过按名称查找 Zone 时，DNS 适配器会读取 `CLOUDFLARE_ZONE_ID`。它属于 `flash-dns` 或 `flash-nexus`，不属于 `flash-tunnel.ts`。
 
-| 字段 | 类型 | 默认值 / 行为 |
-| --- | --- | --- |
-| `autoStopAfter` | `string \| number` | 未配置时没有自动时限 |
-
-可以使用 `'90s'`、`'30m'`、`'2h'`，或毫秒数值。到期时，flash-tunnel 会停止会话并清理。
-
-## 连接已有服务的示例
+## 示例
 
 ```ts
 import { defineConfig } from 'flash-tunnel'
 
 export default defineConfig({
   server: { url: 'http://127.0.0.1:3000' },
-  tunnel: { mode: 'quick' },
-  autoStopAfter: '30m'
+  tunnel: { mode: 'quick' }
 })
 ```
 
-字段定义维护在源码的[配置类型](https://github.com/flash-tunnel/flash-tunnel/blob/main/packages/config/src/types.ts)和[配置解析器](https://github.com/flash-tunnel/flash-tunnel/blob/main/packages/core/src/config/resolve.ts)中。
+完整的 named 工作流见[Flash Nexus 整体架构](../guide/ecosystem)和[自定义域名](../guide/custom-domains)。
+
+字段定义维护在 [flash-tunnel 源码仓库](https://github.com/flash-nexus/flash-tunnel/tree/main/packages/config)和 [flash-nexus 配置](https://github.com/flash-nexus/flash-nexus)中。

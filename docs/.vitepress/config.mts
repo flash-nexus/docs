@@ -1,7 +1,7 @@
 import { defineConfig, type DefaultTheme } from 'vitepress'
 
 const origin = 'https://flash-tunnel.imba97.dev'
-const repo = 'https://github.com/flash-tunnel/flash-tunnel'
+const repo = 'https://github.com/flash-nexus/flash-tunnel'
 const docsRepo = 'https://github.com/flash-tunnel/docs'
 
 // Adapted from the pmpx / Synra documentation: mirrored navigation and shared theme.
@@ -16,6 +16,7 @@ function sidebar(zh: boolean): DefaultTheme.SidebarItem[] {
     {
       text: zh ? '使用指南' : 'Guides',
       items: [
+        item('Ecosystem', '整体架构', '/guide/ecosystem'),
         item('Custom domains', '自定义域名', '/guide/custom-domains'),
         item('Local servers', '本地服务', '/guide/local-servers'),
         item('Configuration', '配置项目', '/guide/configuration'),

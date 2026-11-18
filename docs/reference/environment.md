@@ -3,7 +3,7 @@ description: Environment variables for credentials, preview settings, output, an
 ---
 # Environment variables
 
-For supported settings, environment variables override the config file and are overridden by CLI flags.
+For flash-tunnel settings, environment variables override the config file and are overridden by CLI flags. flash-nexus loads the same `.env` file before creating its DNS and Tunnel adapters.
 
 ## Credentials and account
 
@@ -11,7 +11,7 @@ For supported settings, environment variables override the config file and are o
 | --- | --- |
 | `CLOUDFLARE_API_TOKEN` | The only API credential source; required for named mode |
 | `CLOUDFLARE_ACCOUNT_ID` | Select the Cloudflare account explicitly |
-| `CLOUDFLARE_ZONE_ID` | Select the Cloudflare zone explicitly |
+| `CLOUDFLARE_ZONE_ID` | Optional zone hint consumed by the DNS adapter |
 
 Tokens are not written to config, state, or command arguments. Use a CI secret store when running unattended. See [token permissions](../guide/custom-domains).
 
@@ -19,15 +19,14 @@ Tokens are not written to config, state, or command arguments. Use a CI secret s
 
 | Variable | Mapping / meaning |
 | --- | --- |
-| `FLASH_TUNNEL_ZONE` | `domain.zone` |
-| `FLASH_TUNNEL_HOSTNAME` | Full public hostname; overrides zone/subdomain generation |
+| `FLASH_TUNNEL_HOSTNAME` | Full public hostname for standalone named mode |
 | `FLASH_TUNNEL_MODE` | `tunnel.mode`: `named` or `quick` |
 | `FLASH_TUNNEL_PORT` | `server.port` |
 | `FLASH_TUNNEL_COMMAND` | `server.command` |
 | `FLASH_TUNNEL_CLOUDFLARED` | `providers.cloudflare.cloudflaredPath` |
 | `FLASH_TUNNEL_AUTO_STOP` | `autoStopAfter`, e.g. `30m` |
 | `FLASH_TUNNEL_TUNNEL_PROVIDER` | `tunnel.provider` |
-| `FLASH_TUNNEL_DNS_PROVIDER` | `domain.provider` |
+| `FLASH_TUNNEL_DNS_PROVIDER` | Legacy standalone provider selection; DNS orchestration belongs to flash-nexus |
 
 ## Output and state
 
