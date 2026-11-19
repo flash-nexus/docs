@@ -1,44 +1,31 @@
 ---
-description: Environment variables for credentials, preview settings, output, and lifecycle hooks.
+description: Shared Nexus environment variables, Cloudflare credentials, and lower-level fallbacks.
 ---
+
 # Environment variables
 
-For flash-tunnel settings, environment variables override the config file and are overridden by CLI flags. flash-nexus loads the same `.env` file before creating its DNS and Tunnel adapters.
+Nexus reads `.env` in the project directory. Use `--env-file <path>` to select a different file. The same settings can be supplied through the process environment.
 
-## Credentials and account
+## Nexus settings
 
-| Variable | Purpose |
+Values in the Nexus column take precedence over the fallback column. If neither is set, Nexus uses the project config or defaults. CLI flags and explicit SDK options override the corresponding environment setting.
+
+| Purpose | Nexus variable | Lower-level fallback |
+| --- | --- | --- |
+| Preview mode | `FLASH_NEXUS_MODE` | `FLASH_TUNNEL_MODE` |
+| DNS zone name | `FLASH_NEXUS_ZONE` | `FLASH_DNS_ZONE` |
+| Full hostname | `FLASH_NEXUS_HOSTNAME` | `FLASH_TUNNEL_HOSTNAME`, then `FLASH_DNS_HOSTNAME` |
+| Subdomain pattern | `FLASH_NEXUS_SUBDOMAIN` | `FLASH_TUNNEL_SUBDOMAIN` |
+| Path to `cloudflared` | `FLASH_NEXUS_CLOUDFLARED_PATH` | `FLASH_TUNNEL_CLOUDFLARED_PATH` |
+
+The Cloudflare Tunnel adapter also accepts `FLASH_TUNNEL_CLOUDFLARED` when no executable path has been supplied to it. Prefer `FLASH_NEXUS_CLOUDFLARED_PATH` for Nexus.
+
+## Cloudflare credentials
+
+| Variable | Used for |
 | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | The only API credential source; required for named mode |
-| `CLOUDFLARE_ACCOUNT_ID` | Select the Cloudflare account explicitly |
-| `CLOUDFLARE_ZONE_ID` | Optional zone hint consumed by the DNS adapter |
+| `CLOUDFLARE_API_TOKEN` | API authentication for named-mode tunnel and DNS changes. |
+| `CLOUDFLARE_ACCOUNT_ID` | Select the Cloudflare account. Set it explicitly when you have more than one account. |
+| `CLOUDFLARE_ZONE_ID` | Optional zone identifier for the DNS adapter. It does not replace the zone name required by Nexus. |
 
-Tokens are not written to config, state, or command arguments. Use a CI secret store when running unattended. See [token permissions](../guide/custom-domains).
-
-## Preview configuration
-
-| Variable | Mapping / meaning |
-| --- | --- |
-| `FLASH_TUNNEL_HOSTNAME` | Full public hostname for standalone named mode |
-| `FLASH_TUNNEL_MODE` | `tunnel.mode`: `named` or `quick` |
-| `FLASH_TUNNEL_PORT` | `server.port` |
-| `FLASH_TUNNEL_COMMAND` | `server.command` |
-| `FLASH_TUNNEL_CLOUDFLARED` | `providers.cloudflare.cloudflaredPath` |
-| `FLASH_TUNNEL_AUTO_STOP` | `autoStopAfter`, e.g. `30m` |
-| `FLASH_TUNNEL_TUNNEL_PROVIDER` | `tunnel.provider` |
-| `FLASH_TUNNEL_DNS_PROVIDER` | Legacy standalone provider selection; DNS orchestration belongs to flash-nexus |
-
-## Output and state
-
-| Variable | Meaning |
-| --- | --- |
-| `FLASH_TUNNEL_NO_OPEN=1` | Suppress browser opening, even with `--open` |
-| `FLASH_TUNNEL_RETENTION_DAYS` | Inactive project-state retention; default `7`, `0` disables pruning |
-| `NO_COLOR` / `FORCE_COLOR` | Control terminal coloring |
-| `CI` | Enable non-interactive fallbacks; disable shortcuts / automatic browser opening |
-
-## Variables passed to child processes
-
-The local server is started with `FLASH_TUNNEL=1`. Supported Vite servers also receive `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS` if it is not already set.
-
-`--on-ready` receives `FLASH_TUNNEL_URL`, `FLASH_TUNNEL_LOCAL_URL`, `FLASH_TUNNEL_SESSION_ID`, `FLASH_TUNNEL_TUNNEL_ID`, and optional `FLASH_TUNNEL_HOSTNAME` / `FLASH_TUNNEL_EXPIRES_AT`. These are hook outputs rather than general input settings. See [automation](../guide/automation).
+See [token permissions and setup](../guide/custom-domains). Quick mode does not require these credentials.

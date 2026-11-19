@@ -1,44 +1,31 @@
 ---
-description: 凭据、预览设置、输出与生命周期回调所使用的环境变量。
+description: Nexus 的共享环境变量、Cloudflare 凭据和底层回退顺序。
 ---
+
 # 环境变量
 
-对于 flash-tunnel 支持的字段，环境变量覆盖配置文件，命令行参数又会覆盖环境变量。flash-nexus 会在创建 DNS 和 Tunnel 适配器前加载同一个 `.env` 文件。
+Nexus 默认读取项目目录中的 `.env`。可以通过 `--env-file <path>` 指定其他文件，也可以直接从进程环境传入变量。
 
-## 凭据与账号
+## Nexus 设置
+
+优先取 Nexus 变量，再取表中对应的底层回退，两者都没有时使用项目配置或默认值。CLI 参数和显式 SDK 选项可以覆盖对应的环境设置。
+
+| 用途 | Nexus 变量 | 底层回退 |
+| --- | --- | --- |
+| 预览模式 | `FLASH_NEXUS_MODE` | `FLASH_TUNNEL_MODE` |
+| DNS zone 名称 | `FLASH_NEXUS_ZONE` | `FLASH_DNS_ZONE` |
+| 完整主机名 | `FLASH_NEXUS_HOSTNAME` | 先 `FLASH_TUNNEL_HOSTNAME`，再 `FLASH_DNS_HOSTNAME` |
+| 子域名模板 | `FLASH_NEXUS_SUBDOMAIN` | `FLASH_TUNNEL_SUBDOMAIN` |
+| `cloudflared` 路径 | `FLASH_NEXUS_CLOUDFLARED_PATH` | `FLASH_TUNNEL_CLOUDFLARED_PATH` |
+
+如果调用方未指定可执行文件路径，Cloudflare Tunnel 适配器还会读取 `FLASH_TUNNEL_CLOUDFLARED`。在 Nexus 中建议使用 `FLASH_NEXUS_CLOUDFLARED_PATH`。
+
+## Cloudflare 凭据
 
 | 变量 | 用途 |
 | --- | --- |
-| `CLOUDFLARE_API_TOKEN` | 唯一 API 凭据来源，named 模式必需 |
-| `CLOUDFLARE_ACCOUNT_ID` | 显式指定 Cloudflare 账号 |
-| `CLOUDFLARE_ZONE_ID` | DNS 适配器使用的可选 Zone 提示 |
+| `CLOUDFLARE_API_TOKEN` | 命名模式下的隧道和 DNS API 认证。 |
+| `CLOUDFLARE_ACCOUNT_ID` | 指定 Cloudflare 账号。使用多个账号时建议显式填写。 |
+| `CLOUDFLARE_ZONE_ID` | DNS 适配器使用的可选 zone 标识，Nexus 仍需要 zone 名称。 |
 
-Token 不写入配置、状态或命令参数。无人值守运行时请使用 CI 密钥存储，权限配置见[自定义域名](../guide/custom-domains)。
-
-## 预览配置
-
-| 变量 | 映射 / 含义 |
-| --- | --- |
-| `FLASH_TUNNEL_HOSTNAME` | 独立 named 模式使用的完整公网主机名 |
-| `FLASH_TUNNEL_MODE` | `tunnel.mode`：`named` 或 `quick` |
-| `FLASH_TUNNEL_PORT` | `server.port` |
-| `FLASH_TUNNEL_COMMAND` | `server.command` |
-| `FLASH_TUNNEL_CLOUDFLARED` | `providers.cloudflare.cloudflaredPath` |
-| `FLASH_TUNNEL_AUTO_STOP` | `autoStopAfter`，例如 `30m` |
-| `FLASH_TUNNEL_TUNNEL_PROVIDER` | `tunnel.provider` |
-| `FLASH_TUNNEL_DNS_PROVIDER` | 独立模式的历史 provider 选择；DNS 编排由 flash-nexus 负责 |
-
-## 输出与状态
-
-| 变量 | 含义 |
-| --- | --- |
-| `FLASH_TUNNEL_NO_OPEN=1` | 即使设置 `--open` 也不打开浏览器 |
-| `FLASH_TUNNEL_RETENTION_DAYS` | 不活跃项目状态的保留天数，默认 `7`，`0` 关闭过期清理 |
-| `NO_COLOR` / `FORCE_COLOR` | 控制终端颜色 |
-| `CI` | 使用非交互式回退行为，关闭快捷键和自动打开浏览器 |
-
-## 传给子进程的变量
-
-本地服务启动时会收到 `FLASH_TUNNEL=1`。对于支持的 Vite 服务，如果没有已有值，还会收到 `__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS`。
-
-`--on-ready` 会收到 `FLASH_TUNNEL_URL`、`FLASH_TUNNEL_LOCAL_URL`、`FLASH_TUNNEL_SESSION_ID`、`FLASH_TUNNEL_TUNNEL_ID`，以及可选的 `FLASH_TUNNEL_HOSTNAME` / `FLASH_TUNNEL_EXPIRES_AT`。这些属于回调输出，不是通用输入配置，详见[自动化](../guide/automation)。
+配置方法和所需权限见[使用自己的域名](../guide/custom-domains)。临时模式不需要这些凭据。

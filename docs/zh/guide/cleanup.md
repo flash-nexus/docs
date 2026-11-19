@@ -1,56 +1,29 @@
 ---
-description: 了解独立 Tunnel 的清理，以及 flash-nexus 如何协调 DNS 清理。
+description: flash-nexus 会话结束时清理哪些资源，以及退出被中断后如何排查。
 ---
-# 清理与恢复
 
-`flash-tunnel` 负责自己创建的 Tunnel 和本地进程，不负责 DNS 记录。当 DNS 与 Tunnel 由 `flash-nexus` 共同管理时，Nexus 会把 `flash-dns` 记录纳入同一个会话生命周期。
+# 停止预览与清理
 
-## 独立使用 flash-tunnel
+在终端按 **Ctrl+C**，或通过 [SDK](./automation) 调用 `await preview.stop()`。等待清理完成再关闭终端。
 
-独立 `flash-tunnel` 正常退出时会：
+## 会清理什么
 
-1. 停止 `cloudflared`。
-2. 等待 Tunnel 会话完成清理钩子。
-3. 停止由 flash-tunnel 启动的本地服务进程。
-4. 删除本地会话状态并释放项目锁。
-
-Quick 模式没有账号内的 DNS 记录。通过 `--url` 连接的已有服务仍由你自己停止。
-
-## flash-nexus 的清理
-
-由 `flash-nexus` 启动的 named 会话会跨两个 provider 清理：
-
-1. 停止会话拥有的客户端或本地服务进程。
-2. 通过 `flash-dns` 删除会话归属的 DNS 记录。
-3. 通过 `flash-tunnel` 停止并删除 named Tunnel。
-4. 删除会话状态。
-
-DNS 记录中会保存会话归属信息，因此清理时可以拒绝删除其他工作流拥有的记录。
-
-## 意外中断
-
-| 情况 | 行为 |
+| 资源 | 正常关闭时的行为 |
 | --- | --- |
-| `Ctrl+C` | 清理后以 `130` 退出 |
-| `SIGTERM` / `SIGHUP` | 清理后以 `143` 退出 |
-| 清理时再次按 `Ctrl+C` | 立即退出，保留状态供恢复 |
-| 主进程被杀或终端关闭 | 独立 watchdog 尝试回收 |
-| 清理失败 | 保留状态以便重试 |
+| `cloudflared` 进程 | 随预览一起停止。 |
+| 命名模式的 DNS 记录 | 先移除归当前会话管理的 CNAME。 |
+| 命名模式的 Cloudflare Tunnel | 回收本次预览创建的隧道。 |
+| Nexus 启动的本地服务 | 随预览一起停止。 |
+| 通过 `--url` 或 `server.url` 接入的本地服务 | 继续运行。 |
 
-云端清理需要网络和有效凭据。意外中断后，请检查记录的会话状态。
+临时模式不创建账号下的 DNS 记录。如果设置了 [`tunnel.keep`](../reference/config#tunnel)，云端资源会保留，但本地隧道进程仍然停止，公网地址不会继续提供服务。
 
-## 手动清理
+## 如果关闭过程被中断
 
-```sh
-npx flash-tunnel clean
-npx flash-tunnel clean --stale --dry-run
-npx flash-tunnel clean --stale
-```
+启用状态持久化时，Tunnel 核心默认把会话状态和日志保存在 `~/.flash-tunnel/`。清理未完成时，先从状态和终端输出确认是哪次会话，再去 Cloudflare 控制台查找对应的隧道和 CNAME，确认后再处理残留资源。
 
-对于由 `flash-dns` 管理的 DNS 记录，删除前先查看 plan 或记录归属。确认剩余云资源之前，不要直接删除本地状态。
+::: info 确认 DNS 归属
+一次命名预览只管理自己的 DNS 记录。同一个主机名也可能被其他会话或流程使用，修改前先确认记录的归属。
+:::
 
-## 保留云端资源
-
-独立 Tunnel 和 Nexus 会话都可以配置保留云端资源。保留 Tunnel 或 DNS 记录不会让本地服务或 `cloudflared` 进程持续运行。
-
-Cloudflare 凭据只从环境变量读取，不会保存到项目配置、会话状态或命令参数中。
+自动化脚本应当[在 finally 中关闭 SDK 会话](./automation)，并让 Cloudflare 凭据保持可用，直到清理完成。

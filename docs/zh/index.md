@@ -1,31 +1,35 @@
 ---
 layout: home
-title: 本地服务，即刻分享。
+title: 分享本地服务
 hero:
-  name: flash-tunnel
-  text: 本地服务，<br>即刻分享。
-  tagline: 一条命令，把本地开发服务变成可分享的公网预览。自动识别、连接隧道，退出时自动清理。
-  image:
-    src: /logo.svg
-    alt: flash-tunnel
+  name: flash-nexus
+  text: 分享本地服务，<br>一条命令开启预览。
+  tagline: 启动或连接本地服务，用 Cloudflare 临时地址分享，也可以使用自己的域名。
   actions:
     - theme: brand
       text: 快速开始
       link: /zh/guide/quick-start
     - theme: alt
-      text: 在 GitHub 上查看 ↗
-      link: https://github.com/flash-nexus/flash-tunnel
+      text: 了解生态与依赖
+      link: /zh/guide/ecosystem
 features:
-  - title: 识别你的项目
-    details: 自动找到框架、包管理器、启动脚本和端口，支持 Vite、Next、Nuxt、Astro、静态站点等常见项目。
-    link: /zh/guide/local-servers
-    linkText: 了解本地服务
-  - title: 分享恰好的地址
-    details: 使用 flash-tunnel 获取临时地址，也可以让 flash-nexus 协调 DNS 记录和 Tunnel，生成稳定的命名预览。
-    link: /zh/guide/ecosystem
-    linkText: 了解整体架构
-  - title: 分享之后，轻松离开
-    details: 退出即回收 DNS 记录、隧道和子进程。后台守护与启动扫描，协助恢复被意外中断的会话。
-    link: /zh/guide/cleanup
-    linkText: 了解清理机制
+  - title: 临时预览
+    details: 无需配置 DNS，用临时 trycloudflare.com 地址分享本地应用或 API。
+    link: /zh/guide/quick-start
+  - title: 自定义域名
+    details: 使用固定主机名或子域名模板，由 Nexus 管理对应的 Cloudflare Tunnel 和 DNS 记录。
+    link: /zh/guide/custom-domains
+  - title: CLI 与 SDK
+    details: 用项目配置重复启动同一套流程，也可以将预览会话接入自己的开发工具。
+    link: /zh/guide/automation
 ---
+
+## 试一下
+
+安装 `cloudflared`，并确保本地服务正在监听 5173 端口：
+
+~~~sh
+npx flash-nexus --mode quick --url http://127.0.0.1:5173
+~~~
+
+打开终端输出的 `public` 地址。分享结束后按 **Ctrl+C** 关闭预览，原本已运行的本地服务会继续运行。

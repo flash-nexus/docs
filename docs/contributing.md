@@ -1,60 +1,48 @@
 ---
-description: Contribute to flash-tunnel or its bilingual VitePress documentation.
+description: Contribute to the Flash Nexus tools or to these bilingual docs.
 ---
+
 # Contributing
 
-There are two repositories:
+## Work on a package
 
-- [flash-nexus/flash-tunnel](https://github.com/flash-nexus/flash-tunnel): the CLI, core, config, and Cloudflare adapter.
-- [flash-tunnel/docs](https://github.com/flash-tunnel/docs): this independent VitePress site.
+Report behavior in the repository that owns it:
 
-## Work on the CLI
+| Repository | Scope |
+| --- | --- |
+| [flash-nexus/flash-nexus](https://github.com/flash-nexus/flash-nexus) | CLI, SDK, configuration, and preview orchestration |
+| [flash-nexus/flash-tunnel](https://github.com/flash-nexus/flash-tunnel) | Tunnel adapters and local process lifecycle |
+| [flash-nexus/flash-dns](https://github.com/flash-nexus/flash-dns) | DNS providers, naming, planning, and ownership |
+| [flash-tunnel/docs](https://github.com/flash-tunnel/docs) | This documentation site |
 
-Use Node.js **22.14+** and the pnpm version declared in the repository's `packageManager` field.
+To work on Nexus, use Node.js 22.14 or newer and the pnpm version declared by the repository.
 
-```sh
-git clone git@github.com:flash-nexus/flash-tunnel.git
-cd flash-tunnel
+~~~sh
+git clone https://github.com/flash-nexus/flash-nexus.git
+cd flash-nexus
 pnpm install
-pnpm build
-pnpm ft --version
 pnpm lint
 pnpm typecheck
 pnpm test
-```
-
-The end-to-end suite is opt-in and uses real Cloudflare resources:
-
-```sh
-FLASH_TUNNEL_E2E=1 pnpm test:e2e
-```
-
-On PowerShell, set `$env:FLASH_TUNNEL_E2E = '1'` before running `pnpm test:e2e`. Read the repository's test setup and provide scoped credentials before enabling it.
+pnpm build
+~~~
 
 ## Work on these docs
 
-```sh
-git clone git@github.com:flash-tunnel/docs.git flash-tunnel-docs
+~~~sh
+git clone https://github.com/flash-tunnel/docs.git flash-tunnel-docs
 cd flash-tunnel-docs
 pnpm install
 pnpm dev
-```
+~~~
 
-English pages live under `docs/`; Chinese pages mirror the same paths under `docs/zh/`. Keep both versions, navigation, and examples aligned. Verify CLI behavior against source before describing a new option.
+English pages live in `docs/`. Mirror the routes and examples in `docs/zh/`. Keep Mermaid diagrams in Markdown fences so they can be edited next to the prose. Check examples against the corresponding CLI or SDK before documenting them.
 
-Before submitting:
-
-```sh
+~~~sh
 pnpm typecheck
 pnpm check
 pnpm build
-pnpm preview
-```
+pnpm check:build
+~~~
 
-The build checks Markdown links. The structure check verifies locale parity and required publishing files. Preview both languages and check mobile navigation, code blocks, and tables.
-
-## Deployment
-
-Pushes to `main` build and deploy to GitHub Pages. Pull requests run validation without deploying. See the [documentation README](https://github.com/flash-tunnel/docs#deployment) for repository settings and custom-domain DNS setup.
-
-The navigation, theme tokens, and reading rhythm were adapted from imba97's MIT-licensed pmpx / Synra documentation. Both flash-tunnel and these docs use the MIT License.
+Pull requests run validation. Pushes to `main` deploy the docs to GitHub Pages. See the [site README](https://github.com/flash-tunnel/docs#deployment) for deployment settings.

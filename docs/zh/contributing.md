@@ -1,60 +1,48 @@
 ---
-description: 参与 flash-tunnel 开发或维护中英文 VitePress 文档。
+description: 为 Flash Nexus 工具或这套双语文档贡献内容。
 ---
+
 # 参与贡献
 
-项目分为两个仓库：
+## 修改工具
 
-- [flash-nexus/flash-tunnel](https://github.com/flash-nexus/flash-tunnel)：CLI、核心逻辑、配置与 Cloudflare 适配器。
-- [flash-tunnel/docs](https://github.com/flash-tunnel/docs)：独立的 VitePress 文档站。
+按问题所属的职责选择仓库：
 
-## 开发 CLI
+| 仓库 | 负责范围 |
+| --- | --- |
+| [flash-nexus/flash-nexus](https://github.com/flash-nexus/flash-nexus) | CLI、SDK、配置与预览会话编排 |
+| [flash-nexus/flash-tunnel](https://github.com/flash-nexus/flash-tunnel) | 隧道适配器与本地进程生命周期 |
+| [flash-nexus/flash-dns](https://github.com/flash-nexus/flash-dns) | DNS 服务商适配、命名、变更预览及归属 |
+| [flash-tunnel/docs](https://github.com/flash-tunnel/docs) | 本文档站 |
 
-使用 Node.js **22.14+**，以及仓库 `packageManager` 字段指定的 pnpm 版本。
+开发 Nexus 使用 Node.js 22.14 或以上版本，以及仓库声明的 pnpm 版本。
 
-```sh
-git clone git@github.com:flash-nexus/flash-tunnel.git
-cd flash-tunnel
+~~~sh
+git clone https://github.com/flash-nexus/flash-nexus.git
+cd flash-nexus
 pnpm install
-pnpm build
-pnpm ft --version
 pnpm lint
 pnpm typecheck
 pnpm test
-```
+pnpm build
+~~~
 
-端到端测试需要显式启用，并会使用真实 Cloudflare 资源：
+## 修改文档
 
-```sh
-FLASH_TUNNEL_E2E=1 pnpm test:e2e
-```
-
-PowerShell 下先设置 `$env:FLASH_TUNNEL_E2E = '1'`，再执行 `pnpm test:e2e`。启用前请阅读仓库的测试配置，并提供限定权限的凭据。
-
-## 维护文档
-
-```sh
-git clone git@github.com:flash-tunnel/docs.git flash-tunnel-docs
+~~~sh
+git clone https://github.com/flash-tunnel/docs.git flash-tunnel-docs
 cd flash-tunnel-docs
 pnpm install
 pnpm dev
-```
+~~~
 
-英文页面位于 `docs/`，中文位于对应的 `docs/zh/` 路径。请同步维护两种语言、导航和示例。增加选项说明前，应先对照源码确认实际行为。
+英文在 `docs/`，中文在 `docs/zh/`。两边使用同样的路由结构，示例也应保持对应。Mermaid 图直接写在 Markdown 代码块中，便于与正文一起编辑。新增示例前，核对对应 CLI 或 SDK 的实际行为。
 
-提交前执行：
-
-```sh
+~~~sh
 pnpm typecheck
 pnpm check
 pnpm build
-pnpm preview
-```
+pnpm check:build
+~~~
 
-构建会检查 Markdown 链接；结构检查会验证语言页面对应关系和发布必需文件。预览时，请检查两种语言、手机导航、代码块与表格。
-
-## 发布
-
-推送到 `main` 会自动构建并部署至 GitHub Pages。Pull Request 只做校验，不发布。仓库设置与自定义域名 DNS 配置见[文档仓库 README](https://github.com/flash-tunnel/docs#deployment)。
-
-导航结构、主题变量与阅读间距参考复用了 imba97 的 MIT 开源 pmpx / Synra 文档站。flash-tunnel 和本文档均使用 MIT 协议。
+Pull request 会运行检查。推送到 `main` 后，站点通过 GitHub Pages 部署。部署配置见[站点 README](https://github.com/flash-tunnel/docs#deployment)。

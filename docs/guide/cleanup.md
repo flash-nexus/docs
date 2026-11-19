@@ -1,56 +1,29 @@
 ---
-description: Understand standalone Tunnel cleanup and how flash-nexus coordinates DNS cleanup.
+description: What flash-nexus removes when a session ends and what to check if cleanup is interrupted.
 ---
-# Cleanup and recovery
 
-`flash-tunnel` owns the Tunnel and the local processes it starts. It does not own DNS records. When DNS and Tunnel are managed together, `flash-nexus` adds the `flash-dns` record to the same session lifecycle.
+# Stop a preview and clean up
 
-## Standalone flash-tunnel
+Press **Ctrl+C** in the terminal or call `await preview.stop()` from the [SDK](./automation). Keep the process running until cleanup finishes.
 
-On normal exit, standalone `flash-tunnel`:
+## What gets removed
 
-1. Stops `cloudflared`.
-2. Waits for the Tunnel session to finish its cleanup hooks.
-3. Stops the local server process started by flash-tunnel.
-4. Removes local session state and releases the project lock.
-
-Quick mode has no account-owned DNS record. A server attached through `--url` remains yours to stop.
-
-## flash-nexus cleanup
-
-When a named session is started by `flash-nexus`, cleanup runs across both providers:
-
-1. Stop the client or local server processes owned by the session.
-2. Remove the session-owned DNS record through `flash-dns`.
-3. Stop and deprovision the named Tunnel through `flash-tunnel`.
-4. Remove session state.
-
-The session owner is recorded in the DNS record metadata, so cleanup can refuse to remove a record owned by another workflow.
-
-## Interrupted sessions
-
-| Situation | Behavior |
+| Resource | On normal shutdown |
 | --- | --- |
-| `Ctrl+C` | Clean up, then exit with `130` |
-| `SIGTERM` / `SIGHUP` | Clean up, then exit with `143` |
-| Second `Ctrl+C` during shutdown | Exit immediately; retain state for recovery |
-| Main process killed or terminal closed | A detached watchdog attempts recovery |
-| Cleanup failure | Retain state so cleanup can be retried |
+| `cloudflared` process | Stops with the preview. |
+| DNS record in named mode | The session-owned CNAME is removed before the tunnel resource. |
+| Cloudflare Tunnel in named mode | The tunnel created for the session is deprovisioned. |
+| Local server started by Nexus | Stops with the preview. |
+| Local server supplied through `--url` or `server.url` | Continues running. |
 
-Cloud cleanup needs network access and valid credentials. Check the recorded session after an interrupted run.
+Quick mode has no account-owned DNS record. If you set [`tunnel.keep`](../reference/config#tunnel), cloud resources are retained, but the local tunnel process still stops. Keeping the resources does not keep the URL serving.
 
-## Manual cleanup
+## If shutdown was interrupted
 
-```sh
-npx flash-tunnel clean
-npx flash-tunnel clean --stale --dry-run
-npx flash-tunnel clean --stale
-```
+With state persistence enabled, the Tunnel core keeps session state and logs under `~/.flash-tunnel/` by default. If Nexus cannot complete cleanup, use those details and the terminal output to identify the session. In the Cloudflare dashboard, check for the matching tunnel and CNAME before removing any leftover resources.
 
-For DNS records managed by `flash-dns`, inspect the plan or record ownership before removing anything. Avoid deleting local state until you understand which cloud resources remain.
+::: info Record ownership
+A named preview owns only its own DNS record. A matching hostname can also belong to another session or workflow. Check ownership before editing the record.
+:::
 
-## Keeping cloud resources
-
-Standalone Tunnel sessions and Nexus sessions can be configured to keep their cloud resources. A retained Tunnel or DNS record does not keep your local server or `cloudflared` process running.
-
-Cloudflare credentials are read from the environment and are not stored in project configuration, session state, or command arguments.
+For automated use, [stop the SDK session in a finally block](./automation) and keep the Cloudflare credentials available until shutdown finishes.

@@ -1,56 +1,44 @@
 ---
-description: Understand how flash-nexus, flash-dns, and flash-tunnel fit together.
+description: See how the Nexus CLI and SDK depend on flash-tunnel and flash-dns.
 ---
+
 # The Flash Nexus ecosystem
 
-Flash Nexus separates preview orchestration from the provider operations that make it work. Choose the layer that matches the job:
+Use **flash-nexus** to start a preview. It composes two libraries with separate responsibilities.
 
-```text
-flash-nexus       coordinates one complete preview session
-├── flash-dns     manages DNS records and ownership
-└── flash-tunnel  manages Tunnel adapters and cloudflared
-```
+~~~mermaid
+flowchart TD
+    accTitle: Flash Nexus package dependencies
+    accDescr: Nexus uses flash-tunnel for traffic and flash-dns for named DNS records.
+    Nexus["flash-nexus"] -->|Tunnel lifecycle| Tunnel["flash-tunnel"]
+    Nexus -->|DNS in named mode| DNS["flash-dns"]
+~~~
+
+| Project | Responsibility |
+| --- | --- |
+| [flash-nexus](https://github.com/flash-nexus/flash-nexus) | Runs the complete preview from the [CLI](./quick-start) or [SDK](./automation). |
+| [flash-tunnel](https://github.com/flash-nexus/flash-tunnel) | Starts and stops Cloudflare Tunnel connections and manages `cloudflared`. |
+| [flash-dns](https://github.com/flash-nexus/flash-dns) | Resolves hostnames and manages DNS records with ownership checks. |
+
+## Named preview lifecycle
+
+1. Nexus resolves the local server, DNS zone, and public hostname.
+2. It provisions a Cloudflare Tunnel and gets the target hostname from `flash-tunnel`.
+3. It uses `flash-dns` to create a session-owned CNAME pointing to the tunnel.
+4. When the preview is ready, Nexus prints the public URL. On shutdown, it removes the DNS record before deprovisioning the tunnel.
+
+Quick mode uses a Cloudflare-assigned URL and skips the DNS step. See [custom domains](./custom-domains) and [session cleanup](./cleanup).
 
 ## flash-tunnel
 
-`flash-tunnel` is the standalone Tunnel package. It accepts a local origin, starts `cloudflared`, waits for a public URL, and stops the Tunnel it owns.
+Use this CLI if you only need the connection layer:
 
-Use it when:
+~~~sh
+npx flash-tunnel --mode quick --url http://127.0.0.1:5173
+~~~
 
-- you only need a temporary `trycloudflare.com` URL;
-- a hostname and DNS record already exist;
-- another system owns DNS and should remain responsible for it.
-
-In named mode, standalone `flash-tunnel` expects the hostname to already resolve to the Tunnel. It does not create or delete DNS records.
+Its named mode accepts a full hostname. You manage that hostname's DNS separately. See the [standalone Tunnel README](https://github.com/flash-nexus/flash-tunnel#readme).
 
 ## flash-dns
 
-`flash-dns` is the DNS package. It resolves zones, renders hostnames, reconciles records, and tracks ownership so a session can safely remove only what it created.
-
-Use it independently for deployment previews, record automation, or any workflow that does not need a Tunnel.
-
-## flash-nexus
-
-`flash-nexus` is the integration layer. It loads project configuration and environment variables, starts or attaches to the local server, asks `flash-tunnel` for a Tunnel, and uses `flash-dns` to create and clean up the DNS record for named sessions.
-
-Use it when one command should own the complete lifecycle:
-
-1. Load `flash-nexus.config.ts` and `.env`.
-2. Start or attach to the local origin.
-3. Create the named Tunnel through `flash-tunnel`.
-4. Create the DNS record through `flash-dns`.
-5. Print the public URL.
-6. Remove the DNS record and Tunnel during cleanup.
-
-Cloudflare credentials stay in the environment. Keep `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_ZONE_ID` out of project configuration and source control.
-
-## Which command should I use?
-
-| Need | Use |
-| --- | --- |
-| Temporary public URL | `npx flash-tunnel --mode quick` |
-| Tunnel for an existing hostname | `npx flash-tunnel --mode named --hostname preview.example.com` |
-| DNS record automation only | `npx flash-dns plan` / `npx flash-dns ensure` |
-| One command for local server DNS Tunnel and cleanup | `npx flash-nexus` |
-
-For mobile and device debugging, `flash-debug` builds on `flash-nexus` and adds the Inspector, log upload APIs, Flutter SDK integration, and ADB or HDC clients.
+Use `flash-dns plan` to inspect a configured change before writing. `flash-dns ensure` applies the change, subject to record ownership. See the [DNS README](https://github.com/flash-nexus/flash-dns#readme) for examples and provider configuration.

@@ -1,80 +1,40 @@
 ---
-description: 排查 cloudflared、Cloudflare 权限、DNS 冲突、本地服务和清理失败。
+description: 排查 flash-nexus 启动、Cloudflare 凭据、DNS 冲突与本地服务问题。
 ---
-# 常见问题
 
-先检查环境，再查看生效配置：
+# 故障排查
 
-```sh
-npx flash-tunnel doctor
-npx flash-tunnel --mode quick --dry-run
-```
+先检查工具版本和当前目录加载到的配置：
 
-启动失败时，在原命令后加 `--verbose` 查看细节。提交问题时，请提供 CLI 版本、操作系统、执行命令和错误码，并从粘贴的日志中移除凭据。
+~~~sh
+npx flash-nexus --version
+cloudflared --version
+npx flash-nexus --dry-run
+~~~
 
-## cloudflared 无法启动
+`--dry-run` 不会调用 Cloudflare。详见[输出说明](../reference/cli)。
 
-执行 `cloudflared --version`。找不到命令时，请[安装 cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)，或通过 `FLASH_TUNNEL_CLOUDFLARED` 指定可执行文件路径。安装 npm CLI 不会同时安装 `cloudflared`。
+## 找不到 cloudflared
 
-## 认证与域名错误
+安装 [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) 并加入 PATH，或将 `FLASH_NEXUS_CLOUDFLARED_PATH` 设为可执行文件路径。安装 npm 包时不会自动安装这个程序。
 
-| 错误 | 检查项 |
+## 命名预览启动失败
+
+| 现象 | 检查项 |
 | --- | --- |
-| `AUTH_INVALID` / `403` | Token 是否有效、账号 / Zone 范围，以及[四项权限](./custom-domains)是否齐全 |
-| `ACCOUNT_NOT_FOUND` | 设置正确的 `CLOUDFLARE_ACCOUNT_ID` |
-| `ZONE_NOT_FOUND` / `ZONE_NOT_ACTIVE` | `--zone` 指定的域名是否在 Token 对应账号中生效 |
-| `RECORD_CONFLICT` | 换一个子域名，或在使用 `--overwrite` 前确认已有 DNS 记录 |
+| `zone is required` | 通过 `--zone`、`FLASH_NEXUS_ZONE` 或 `dns.zone` 提供 `example.com` 这样的域名。只有 Zone ID 不够。 |
+| Cloudflare 返回 401 或 403 | 检查 API Token、账号与 zone 的授权范围及[所需权限](./custom-domains)。 |
+| 找不到账号或 zone | 显式设置 `CLOUDFLARE_ACCOUNT_ID`，确认 zone 已启用且属于该账号。 |
+| 主机名不属于 zone | 使用 Nexus 所设置的 zone 下的主机名。需要生成子域名时，检查 `.env` 是否还设置了完整主机名。 |
+| DNS 记录冲突 | 换一个主机名，或先检查现有记录的归属。 |
 
-Quick 模式不需要 Token。如果只需要临时地址，请显式传入 `--mode quick`。
+如果只需要临时地址，请显式传入 `--mode quick`。Nexus 默认使用 `named`。
 
-## 找不到可运行脚本
+## 本地服务或公网预览没就绪
 
-进入应用目录，或使用 `--cwd apps/web`。也可以指定 `--command 'pnpm dev' --port 5173`，或构建后使用 `--static dist`。只有 `preview` 脚本但没有产物时，需要先构建。
+- 在同一台机器上先打开本地地址，确认能访问后，再用 `--url` 连接这个服务。
+- monorepo 中识别到错误项目时，用 `--cwd apps/web` 指定目录，或配置 [`server.command` 和 `server.port`](./local-servers)。
+- 如果应用拒绝公网主机名，在应用里添加允许的主机名，见[本地服务指南](./local-servers)。
+- 如果公网就绪检查超时，查看 `cloudflared` 输出，并确认本地服务仍在运行。
 
-从 0.2.0 开始，`NO_RUNNABLE_SCRIPT` 表示当前目录没有可运行服务。如果在 `apps/*` 或 `packages/*` 中找到可运行应用，非交互环境会报告 `WORKSPACE_REQUIRED` 并给出路径。请用 `--cwd` 选择，CI 不会任意启动一个子应用。
-
-子应用意外使用 npm 时，检查是否存在更近的 lockfile 或 workspace 边界。[包管理器继承规则](./local-servers#自动探测)会就近匹配，并在 Git 或 workspace 根目录停止。
-
-## 端口与主机名问题
-
-- `PORT_IN_USE` 表示固定端口或静态服务端口被占用。请同时调整服务自身和 flash-tunnel 的端口，或用 `--reuse` / `--url <url> --attach` 主动连接已有服务。
-- 从 0.2.0 开始，框架或通用默认端口只是估计值，被占用时仍会启动命令，等待它报告其他本地 URL。如果命令不打印 URL，请显式指定实际端口，详见[端口选择与冲突](./local-servers#端口选择与冲突)。
-- 公网页面提示 **Blocked request / host is not allowed** 时，检查开发服务的 allowed-host 配置。flash-tunnel 只向自己启动的服务注入 Vite 额外主机名环境变量。
-- 连接已有 Vite 服务时，需要放行相应主机名后重启服务。Quick 模式所需后缀为 `.trycloudflare.com`。
-- 公网就绪检测超时，先确认本地 URL 可访问，再从 `--verbose` 输出中检查 `cloudflared` 错误。
-
-## 退出之后预览无法访问
-
-隧道需要本地服务和 `cloudflared` 持续运行。`--keep` 只保留云端记录，不保留这些进程。分享期间请保持终端会话运行。
-
-## 快捷键或清理没有响应
-
-先点击终端，再使用 **c**、**o**、**q** 或 **Ctrl+C**。快捷键需要交互式 TTY，在 CI 中不会启用。
-
-如果清理以 `8` 退出，恢复网络和凭据后重试：
-
-```sh
-npx flash-tunnel clean --stale
-```
-
-单个保留会话可以用 `clean --session <id>` 清理。恢复成功前请保留状态文件，详见[清理与恢复](./cleanup)。
-
-## 退出码
-
-| 退出码 | 含义 |
-| --- | --- |
-| `0` | 成功完成 |
-| `1` | 未分类或意外错误 |
-| `2` | 配置、确认或项目锁错误 |
-| `3` | 本地服务 / 构建失败 |
-| `4` | 认证、权限或账号错误 |
-| `5` | 隧道失败 |
-| `6` | DNS / Zone / 记录失败 |
-| `7` | 公网 URL 验证失败 |
-| `8` | 清理未完成，需要使用保留状态重试 |
-| `130` | Ctrl+C 中断并清理 |
-| `143` | SIGTERM / SIGHUP 结束并清理 |
-
-清理未完成时，可能用 `8` 覆盖之前的退出状态，以提示需要恢复。
-
-仍有问题？欢迎[提交 Issue](https://github.com/flash-nexus/flash-tunnel/issues)。
+退出中断后发现残留资源，可参考[会话清理](./cleanup)。报告问题时请提供 Nexus 版本、系统、命令及错误信息，并在贴出内容前移除凭据。[提交 Issue](https://github.com/flash-nexus/flash-nexus/issues)。

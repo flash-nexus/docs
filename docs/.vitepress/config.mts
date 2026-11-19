@@ -1,8 +1,11 @@
 import { defineConfig, type DefaultTheme } from 'vitepress'
 
 const origin = 'https://flash-tunnel.imba97.dev'
-const repo = 'https://github.com/flash-nexus/flash-tunnel'
+const siteName = 'flash-nexus'
+const repo = 'https://github.com/flash-nexus/flash-nexus'
 const docsRepo = 'https://github.com/flash-tunnel/docs'
+const description = 'Share a local service through a Cloudflare tunnel, with DNS managed as part of the same preview.'
+const descriptionZh = '将本地服务分享为公网预览，由 flash-nexus 统一管理隧道和 DNS。'
 
 // Adapted from the pmpx / Synra documentation: mirrored navigation and shared theme.
 function sidebar(zh: boolean): DefaultTheme.SidebarItem[] {
@@ -11,17 +14,20 @@ function sidebar(zh: boolean): DefaultTheme.SidebarItem[] {
   return [
     {
       text: zh ? '开始使用' : 'Getting started',
-      items: [item('Introduction', '项目介绍', '/guide/introduction'), item('Quick start', '快速开始', '/guide/quick-start')]
+      items: [
+        item('Introduction', '项目介绍', '/guide/introduction'),
+        item('Quick start', '快速开始', '/guide/quick-start'),
+        item('Ecosystem', '生态与依赖关系', '/guide/ecosystem')
+      ]
     },
     {
       text: zh ? '使用指南' : 'Guides',
       items: [
-        item('Ecosystem', '整体架构', '/guide/ecosystem'),
         item('Custom domains', '自定义域名', '/guide/custom-domains'),
         item('Local servers', '本地服务', '/guide/local-servers'),
         item('Configuration', '配置项目', '/guide/configuration'),
         item('Cleanup & recovery', '清理与恢复', '/guide/cleanup'),
-        item('CI & automation', 'CI 与自动化', '/guide/automation')
+        item('SDK & automation', 'SDK 与自动化', '/guide/automation')
       ]
     },
     {
@@ -34,14 +40,14 @@ function sidebar(zh: boolean): DefaultTheme.SidebarItem[] {
     },
     {
       text: zh ? '更多' : 'Resources',
-      items: [item('Troubleshooting', '常见问题', '/guide/troubleshooting'), item('0.2.0 release notes', '0.2.0 更新说明', '/releases/0.2.0'), item('Contributing', '参与贡献', '/contributing')]
+      items: [item('Troubleshooting', '故障排查', '/guide/troubleshooting'), item('Contributing', '参与贡献', '/contributing')]
     }
   ]
 }
 
 export default defineConfig({
-  title: 'flash-tunnel',
-  description: 'Turn a local dev server into a shareable preview with one command.',
+  title: siteName,
+  description,
   lang: 'en-US',
   base: '/',
   // GitHub Pages serves .html files directly, including on a fresh deep-link visit.
@@ -51,10 +57,21 @@ export default defineConfig({
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo.svg' }],
     ['meta', { name: 'theme-color', content: '#191827' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:site_name', content: 'flash-tunnel' }],
+    ['meta', { property: 'og:site_name', content: siteName }],
     ['meta', { name: 'twitter:card', content: 'summary' }]
   ],
-  markdown: { theme: { light: 'github-light', dark: 'github-dark' } },
+  markdown: {
+    theme: { light: 'github-light', dark: 'github-dark' },
+    config(md) {
+      const fence = md.renderer.rules.fence!
+      md.renderer.rules.fence = (tokens, index, options, env, self) => {
+        const token = tokens[index]
+        if (token.info.trim() !== 'mermaid') return fence(tokens, index, options, env, self)
+        const source = md.utils.escapeHtml(JSON.stringify(token.content))
+        return `<MermaidDiagram :source="${source}" />\n`
+      }
+    }
+  },
   themeConfig: {
     logo: { src: '/logo.svg', alt: '' },
     socialLinks: [{ icon: 'github', link: repo }],
@@ -91,7 +108,7 @@ export default defineConfig({
         nav: [
           { text: 'Guide', link: '/guide/quick-start', activeMatch: '^/guide/' },
           { text: 'Reference', link: '/reference/cli', activeMatch: '^/reference/' },
-          { text: 'Resources', items: [{ text: 'npm', link: 'https://www.npmjs.com/package/flash-tunnel' }, { text: 'Releases', link: `${repo}/releases` }, { text: 'Contributing', link: '/contributing' }] }
+          { text: 'Resources', items: [{ text: 'npm', link: 'https://www.npmjs.com/package/flash-nexus' }, { text: 'Releases', link: `${repo}/releases` }, { text: 'Contributing', link: '/contributing' }] }
         ],
         sidebar: sidebar(false),
         outline: { level: [2, 3], label: 'On this page' },
@@ -103,12 +120,12 @@ export default defineConfig({
     },
     zh: {
       label: '简体中文', lang: 'zh-CN', link: '/zh/',
-      description: '一条命令，把本地服务变成可分享的公网预览。',
+      description: descriptionZh,
       themeConfig: {
         nav: [
           { text: '指南', link: '/zh/guide/quick-start', activeMatch: '^/zh/guide/' },
           { text: '参考', link: '/zh/reference/cli', activeMatch: '^/zh/reference/' },
-          { text: '资源', items: [{ text: 'npm', link: 'https://www.npmjs.com/package/flash-tunnel' }, { text: '版本发布', link: `${repo}/releases` }, { text: '参与贡献', link: '/zh/contributing' }] }
+          { text: '资源', items: [{ text: 'npm', link: 'https://www.npmjs.com/package/flash-nexus' }, { text: '版本发布', link: `${repo}/releases` }, { text: '参与贡献', link: '/zh/contributing' }] }
         ],
         sidebar: sidebar(true),
         outline: { level: [2, 3], label: '本页目录' },
@@ -138,8 +155,8 @@ export default defineConfig({
       ['link', { rel: 'alternate', hreflang: 'zh-CN', href: zhUrl }],
       ['link', { rel: 'alternate', hreflang: 'x-default', href: enUrl }],
       ['meta', { property: 'og:url', content: url }],
-      ['meta', { property: 'og:title', content: pageData.title ? `${pageData.title} | flash-tunnel` : 'flash-tunnel' }],
-      ['meta', { property: 'og:description', content: pageData.description || (zh ? '一条命令，把本地服务变成可分享的公网预览。' : 'Turn a local dev server into a shareable preview with one command.') }],
+      ['meta', { property: 'og:title', content: pageData.title ? `${pageData.title} | ${siteName}` : siteName }],
+      ['meta', { property: 'og:description', content: pageData.description || (zh ? descriptionZh : description) }],
       ['meta', { property: 'og:image', content: `${origin}/logo.svg` }]
     ]
   }

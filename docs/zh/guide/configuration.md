@@ -1,73 +1,50 @@
 ---
-description: 创建 flash-tunnel.ts，了解配置优先级和相对路径的解析方式。
+description: 保存项目配置，下次直接运行 flash-nexus。
 ---
+
 # 配置项目
 
-配置文件是可选的。临时预览可以直接使用命令行参数，经常使用的设置则可以保存到 `flash-tunnel.ts`。
+如果经常用同一种方式预览，在项目目录创建 `flash-nexus.config.json` 或 `flash-nexus.config.ts`，保存本地服务和预览模式。之后直接运行 `npx flash-nexus` 即可。
 
-## 生成配置
+## 选择配置文件格式
 
-```sh
-pnpm add -D flash-tunnel
-pnpm exec flash-tunnel init
-```
+下面的配置会执行 `pnpm dev`，再用临时地址分享本地 5173 端口。
 
-`init` 在当前目录生成 `flash-tunnel.ts`。已有同名文件时不会覆盖，除非传入 `--force`。
+::: code-group
 
-## 常用配置
+~~~json [flash-nexus.config.json]
+{
+  "server": {
+    "command": "pnpm dev",
+    "port": 5173
+  },
+  "tunnel": {
+    "mode": "quick"
+  }
+}
+~~~
 
-```ts
-import { defineConfig } from 'flash-tunnel'
+~~~ts [flash-nexus.config.ts]
+import { defineConfig } from 'flash-nexus'
 
 export default defineConfig({
-  domain: {
-    zone: 'example.com',
-    subdomain: '{project}-{rand}'
-  },
-  server: {
-    command: 'pnpm dev',
-    port: 5173,
-    timeout: 90_000
-  },
-  tunnel: { mode: 'named' },
-  autoStopAfter: '2h'
+  server: { command: 'pnpm dev', port: 5173 },
+  tunnel: { mode: 'quick' },
 })
-```
+~~~
 
-`server.timeout` 的单位是**毫秒**。`autoStopAfter` 支持 `'30m'`、`'2h'` 这样的时长字符串，也支持毫秒数值。`CLOUDFLARE_API_TOKEN` 请保存在环境变量中。
+:::
 
-## 默认使用免 Token 模式
+只保存数据可以用 JSON，需要编辑器类型提示可以用 TypeScript。如果本地服务已经启动，把 `server` 改为 `{ "url": "http://127.0.0.1:5173" }`。
 
-```ts
-import { defineConfig } from 'flash-tunnel'
+## 将运行环境配置放到 .env
 
-export default defineConfig({
-  tunnel: { mode: 'quick' }
-})
-```
+Cloudflare 凭据和机器相关的值放在 `.env`。如需读取项目目录下的其他文件，可传入 `--env-file .env.preview`。
 
-此后执行 `pnpm exec flash-tunnel`，就会使用 quick 模式，无需每次加参数。
+支持覆盖的同名字段通常按 **CLI 参数 → Nexus 环境变量 → 对应的底层环境变量 → 项目配置 → 默认值** 取值。变量名和回退顺序见[环境变量参考](../reference/environment)，可写入文件的字段见[配置参考](../reference/config)。
 
-## 文件发现与相对路径
+::: tip 查看加载到的配置
+`npx flash-nexus --dry-run` 会打印配置加载器读到的内容，不会启动隧道。它不会展示应用全部 CLI 和环境变量覆盖后的最终值，也不会校验 Cloudflare 凭据。
+:::
 
-flash-tunnel 从项目目录向上查找 `flash-tunnel.ts`，直到 Git 根目录。可以用 `--config` 显式指定：
-
-```sh
-npx flash-tunnel --config ./config/flash-tunnel.ts --mode quick
-```
-
-配置中的相对路径以**配置文件所在目录**为基准。如果文件位于 `config/`，可以设置 `server.cwd: '..'`，从项目根目录执行脚本。
-
-## 优先级
-
-**命令行参数 → 环境变量 → 配置文件 → 自动探测 / 默认值。**
-
-只有定义了环境变量映射的字段才有这一层。例如，`--port 4000` 会覆盖 `FLASH_TUNNEL_PORT`，后者又会覆盖 `server.port`。
-
-查看生效配置及来源，且不创建云端资源：
-
-```sh
-npx flash-tunnel --mode quick --dry-run
-```
-
-全部字段见[配置项参考](../reference/config)。完整主机名应通过 `--hostname` 或 `FLASH_TUNNEL_HOSTNAME` 提供；`domain.hostname` 并非类型定义支持的配置字段。
+[设置命名预览](./custom-domains) · [了解本地服务如何选择](./local-servers)

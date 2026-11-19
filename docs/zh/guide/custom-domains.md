@@ -1,81 +1,52 @@
 ---
-description: 独立使用 flash-tunnel 接入已有域名，或使用 flash-nexus 自动管理 DNS。
+description: 使用自己的 Cloudflare 域名，由 flash-nexus 管理对应的 DNS 记录。
 ---
-# 自定义域名
 
-接入自己的域名有两种方式：
+# 使用自己的域名
 
-- **独立使用 flash-tunnel：** 先由其他 DNS 工作流准备记录，再传入已有域名。
-- **使用 flash-nexus：** 一次配置 Zone 和命名规则，由 Nexus 组合 `flash-dns` 与 `flash-tunnel`，并清理本次会话创建的资源。
+命名模式会创建一个 Cloudflare Tunnel 和一条 CNAME 记录。DNS 记录归预览会话管理，正常结束时会随会话一起清理。
 
-## 独立使用 flash-tunnel
+## 1. 配置 Cloudflare 凭据
 
-独立 Tunnel 命令不会创建或删除 DNS 记录。可以先用 `flash-dns` 或其他 DNS 工作流准备域名，再启动 Tunnel：
+在工作目录创建 `.env`。CI 中可从密钥管理器注入相同的值。
 
-```sh
-npx flash-tunnel --mode named --hostname preview.example.com --url http://127.0.0.1:4317
-```
+~~~dotenv
+CLOUDFLARE_API_TOKEN=your-token
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+# 可选：跳过按名称查询 zone
+# CLOUDFLARE_ZONE_ID=your-zone-id
+~~~
 
-将凭据放入环境变量：
+把令牌限制在使用的账号和 zone。授予账号的 **Cloudflare Tunnel Write**、zone 的 **DNS Write**，以及按名称查询 zone 时使用的 **Zone Read**。权限细节见 [Cloudflare API 配置指南](https://developers.cloudflare.com/tunnel/get-started/)。不要把令牌提交到 Git。
 
-```sh
-export CLOUDFLARE_API_TOKEN='your_token_here'
-export CLOUDFLARE_ACCOUNT_ID='your_account_id'
-```
+::: info Zone 和 Zone ID
+Zone 是 `example.com` 这样的域名，`CLOUDFLARE_ZONE_ID` 是 Cloudflare 分配的标识。即使提供了 ID，也要通过 `--zone`、`FLASH_NEXUS_ZONE` 或配置文件指定域名。
+:::
 
-Token 只从环境变量读取。不要将它写入项目配置或 Git 历史。
+## 2. 选择主机名
 
-## 使用 flash-nexus 管理 DNS
+::: code-group
 
-如果同一次会话需要同时创建 DNS 记录和 Tunnel，使用 `flash-nexus.config.ts`：
+~~~sh [固定主机名]
+npx flash-nexus --mode named --url http://127.0.0.1:5173 --zone example.com --hostname preview.example.com
+~~~
 
-```ts
-import { defineConfig } from 'flash-nexus'
+~~~sh [随机后缀]
+npx flash-nexus --mode named --url http://127.0.0.1:5173 --zone example.com --subdomain "preview-{rand:4}"
+~~~
 
-export default defineConfig({
-  tunnel: {
-    mode: 'named',
-    hostname: 'preview.example.com'
-  },
-  dns: {
-    zone: 'example.com'
-  }
-})
-```
+:::
 
-然后执行：
+任选一种命名方式。`--hostname` 接收 zone 下的完整主机名，`--subdomain` 接收 `demo` 或 `preview-{rand:4}` 这样的单段子域名。上面的模板会生成类似 `preview-k8p3.example.com` 的地址。切换为随机子域名时，如果环境变量已有完整主机名，先去掉它。
 
-```sh
-npx flash-nexus
-```
+如果希望根据项目名生成固定形式的地址，可用 [`dns.naming.template`](../reference/config#dns)，例如 `preview-{project}.example.com`。
 
-Nexus 会加载 `.env`，通过 `flash-tunnel` 创建 Tunnel，通过 `flash-dns` 创建 DNS 记录，并在清理时删除本次会话创建的资源。
+## 3. 保存下来，下次直接启动
 
-## DNS 权限
+把 `FLASH_NEXUS_MODE=named`、`FLASH_NEXUS_ZONE` 和 `FLASH_NEXUS_HOSTNAME` 或 `FLASH_NEXUS_SUBDOMAIN` 写入 `.env`，再把本地启动命令或本地地址写入 [`flash-nexus.config.json`](./configuration)。之后在项目目录直接运行 `npx flash-nexus`。
 
-集成工作流需要一个同时满足两个 provider 要求的 Cloudflare Custom token：
+::: tip 使用尚未占用的主机名
+如果同名 DNS 记录不受 Nexus 管理，或属于另一个会话，Nexus 会报告冲突。可以换一个子域名，也可以先向该记录的所有者确认用途。
+:::
 
-| 权限 | 用途 |
-| --- | --- |
-| Account · Cloudflare Tunnel · Edit | 创建和删除 named Tunnel，配置 ingress |
-| Zone · DNS · Edit | 创建和删除会话归属的 CNAME 记录 |
-| Zone · Zone · Read | 查询和校验 DNS Zone |
-
-具体权限取决于选择的 provider 工作流。请将 Token 限定在项目使用的账号和 Zone 范围内。
-
-## 子域名模板
-
-独立使用 Tunnel 时，直接通过 `--hostname` 传入完整域名。使用 Nexus 管理的工作流时，将 Zone 和命名规则写入 `flash-nexus.config.ts`，由 `flash-dns` 在 Tunnel 启动前生成并校验主机名。
-
-```ts
-export default defineConfig({
-  dns: {
-    zone: 'example.com',
-    naming: { template: 'fd-{project}.example.com' }
-  }
-})
-```
-
-## 命名和冲突
-
-将 `zone`、`hostname` 或命名规则写入 `flash-nexus.config.ts`。Cloudflare 凭据放入 `.env` 或环境变量。`flash-dns` 会记录归属信息，帮助会话检测冲突，并只删除自己拥有的记录。
+详见[环境变量](../reference/environment)和[会话清理](./cleanup)。

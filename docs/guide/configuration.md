@@ -1,73 +1,50 @@
 ---
-description: Create flash-tunnel.ts and understand configuration precedence and relative paths.
+description: Save a project configuration and run flash-nexus without repeating flags.
 ---
-# Configure a project
 
-The config file is optional. Use CLI flags for a one-off preview, or save repeated settings in `flash-tunnel.ts`.
+# Set up a project configuration
 
-## Generate a config
+If you run the same preview regularly, save the local server and preview mode in `flash-nexus.config.json` or `flash-nexus.config.ts` in the project directory. You can then run `npx flash-nexus` without extra flags.
 
-```sh
-pnpm add -D flash-tunnel
-pnpm exec flash-tunnel init
-```
+## Pick a file format
 
-`init` creates `flash-tunnel.ts` in the current directory. It refuses to replace an existing file unless you pass `--force`.
+This example asks Nexus to start an app with `pnpm dev` and share port 5173 through a temporary URL.
 
-## A typical configuration
+::: code-group
 
-```ts
-import { defineConfig } from 'flash-tunnel'
+~~~json [flash-nexus.config.json]
+{
+  "server": {
+    "command": "pnpm dev",
+    "port": 5173
+  },
+  "tunnel": {
+    "mode": "quick"
+  }
+}
+~~~
+
+~~~ts [flash-nexus.config.ts]
+import { defineConfig } from 'flash-nexus'
 
 export default defineConfig({
-  domain: {
-    zone: 'example.com',
-    subdomain: '{project}-{rand}'
-  },
-  server: {
-    command: 'pnpm dev',
-    port: 5173,
-    timeout: 90_000
-  },
-  tunnel: { mode: 'named' },
-  autoStopAfter: '2h'
+  server: { command: 'pnpm dev', port: 5173 },
+  tunnel: { mode: 'quick' },
 })
-```
+~~~
 
-`server.timeout` is in **milliseconds**. `autoStopAfter` accepts a duration string such as `'30m'` or `'2h'`, or a number in milliseconds. Keep `CLOUDFLARE_API_TOKEN` in your environment.
+:::
 
-## A token-free default
+Use JSON for plain data or TypeScript for editor completion. To reuse a running service, replace the server block with `{ "url": "http://127.0.0.1:5173" }`.
 
-```ts
-import { defineConfig } from 'flash-tunnel'
+## Keep runtime values in .env
 
-export default defineConfig({
-  tunnel: { mode: 'quick' }
-})
-```
+Put Cloudflare credentials and machine-specific values in `.env`. Use `--env-file .env.preview` to select another file from the project directory.
 
-Now `pnpm exec flash-tunnel` uses quick mode without repeating the flag.
+For settings that support overrides, the general order is **CLI arguments → Nexus environment variables → supported lower-level fallbacks → config file → defaults**. See [the environment reference](../reference/environment) for the exact names and [the config reference](../reference/config) for structured options.
 
-## Discovery and relative paths
+::: tip Check the config file
+`npx flash-nexus --dry-run` prints the configuration loaded by the config loader without opening a tunnel. It does not show the final runtime result after every CLI or environment override, nor does it validate Cloudflare credentials.
+:::
 
-flash-tunnel looks for `flash-tunnel.ts` in the project directory and walks upward to the Git root. Use `--config` to select a file explicitly:
-
-```sh
-npx flash-tunnel --config ./config/flash-tunnel.ts --mode quick
-```
-
-Relative paths in configuration are resolved from the **config file's directory**. If the file lives in `config/`, use `server.cwd: '..'` to run a script from the project root.
-
-## Precedence
-
-**CLI flags → environment variables → config file → auto-detection / defaults.**
-
-Only settings with an environment-variable mapping participate in that layer. For example, `--port 4000` overrides `FLASH_TUNNEL_PORT`, which overrides `server.port`.
-
-Inspect the effective configuration and its sources without creating cloud resources:
-
-```sh
-npx flash-tunnel --mode quick --dry-run
-```
-
-The full set of fields is in the [configuration reference](../reference/config). Hostnames are supplied through `--hostname` or `FLASH_TUNNEL_HOSTNAME`; `domain.hostname` is not a supported typed config field.
+[Configure a named preview](./custom-domains) · [See how local servers are selected](./local-servers)

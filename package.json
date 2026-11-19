@@ -2,7 +2,7 @@
   "name": "flash-tunnel-docs",
   "private": true,
   "type": "module",
-  "description": "The bilingual flash-tunnel documentation at https://flash-tunnel.imba97.dev",
+  "description": "Bilingual documentation for flash-nexus, flash-tunnel, and flash-dns",
   "license": "MIT",
   "packageManager": "pnpm@12.14.0",
   "engines": {
@@ -19,6 +19,7 @@
   "devDependencies": {
     "@types/node": "^26.6.5",
     "esno": "^4.8.0",
+    "mermaid": "12.3.0",
     "typescript": "~6.0.3",
     "vitepress": "1.6.4",
     "vue": "^3.5.43",
